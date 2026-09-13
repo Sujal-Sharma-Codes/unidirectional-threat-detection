@@ -1,0 +1,8 @@
+feature,importance
+min_interarrival_sec,0.2772937881190288
+mean_interarrival_sec,0.21854056109965755
+attempts_in_window,0.1639532217307155
+std_payload_size,0.09863792406258769
+unique_usernames_in_window,0.09352058820140027
+mean_payload_size,0.07887692351112584
+std_interarrival_sec,0.06917699327548431
