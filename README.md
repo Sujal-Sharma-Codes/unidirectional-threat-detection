@@ -1,5 +1,65 @@
-# AI-Based Detection of Cyber Threats in Unidirectional IP Traffic
-### Email login threat detector — rebuilt after judge feedback
+# 🛡️ AI-Based Detection of Cyber Threats in Unidirectional IP Traffic
+
+
+
+![Python](https://img.shields.io/badge/Python-3.12-blue)
+
+
+
+
+![scikit-learn](https://img.shields.io/badge/scikit--learn-RandomForest-orange)
+
+
+
+
+![Status](https://img.shields.io/badge/status-active-brightgreen)
+
+
+
+**A real-time behavioral detector for email login attacks (brute-force &
+credential spray) — built to work under a realistic constraint: the sensor
+can only see inbound traffic, not the server's response.**
+
+## Why this project
+
+Most ML-based intrusion detection research assumes bidirectional network
+visibility — you can see both what came in *and* what went out. In practice,
+a lot of real deployments don't get that luxury: data diodes in industrial/
+SCADA networks, DDoS-victim-side capture points, and passive inbound taps
+all see traffic in one direction only. This project asks a narrower,
+more honest question: **can you still detect an attack with only half the
+picture?**
+
+This started as a hackathon submission trained on CICIDS2017. Judge
+feedback pushed it in a better direction — build something tied to a
+scenario people actually recognize ("is this repeated login activity
+normal, or an attack?"), not just an abstract flow-stats classifier. That
+rebuild surfaced a real problem with the original approach worth
+documenting here rather than hiding: **the original model's top features
+were all response-direction (`Bwd_*`) statistics — information a
+one-way sensor could never actually observe.** That's a form of data
+leakage relative to the stated problem, even though it scored 99.9%
+accuracy.
+
+This repo is the rebuilt version: a self-generated dataset (a mock mail
+login server + normal/attack traffic simulators), features derived only
+from what an inbound-only sensor can see, a live terminal monitor, and a
+browser dashboard — all fed by one real trained model, not a mockup.
+
+## Results (honest, not inflated)
+
+| Metric | Value |
+|---|---|
+| Accuracy | ~99% |
+| Precision (attack) | 1.00 |
+| Recall (attack) | 0.96–0.98 |
+| Top feature | `mean_interarrival_sec` (request timing — not response data) |
+
+Full metrics in [`model_results.json`](./model_results.json) and
+[`feature_importance.csv`](./feature_importance.csv).
+
+## Architecture
+---
 
 ## What changed from the original submission
 
@@ -8,13 +68,8 @@
 | Data source | CICIDS2017 (static, 2017, third-party) | Self-generated, from a login server we built (`generate_dataset.py`) |
 | Top features | `Bwd Packet Length Mean/Std/Max...` — **response-direction** stats | `mean_interarrival_sec`, `attempts_in_window`, `unique_usernames_in_window` — **observable from inbound traffic only** |
 | Real-world framing | Abstract network flow stats | "Is this repeated email login activity normal or an attack?" — the exact scenario judges asked for |
-| Demo | Replays held-out test rows from a saved dataset | `live_monitor.py` watches attempts arrive in real time and flags them as they happen |
+| Demo | Replays held-out test rows from a saved dataset | Live terminal monitor + browser dashboard, both fed by real-time/real-log model predictions |
 | Reported accuracy | 99.9% (inflated by response-side leakage) | 99% (honest — driven by legitimate timing/volume signal, verified no leakage) |
-
-The original model's top features (`Bwd_*`) require seeing the server's
-*response* traffic — which a one-way sensor (a data diode, a DDoS-victim
-capture point, a passive tap that only sees inbound packets) cannot see.
-This rebuild only uses signals a purely inbound sensor could observe.
 
 ## The real-world scenario
 
@@ -48,10 +103,6 @@ python3 server.py
 python3 generate_dataset.py
 python3 feature_extractor.py
 python3 train_model.py
-```
-
-**2. Run the live demo:**
-```bash
 # terminal 1 (if not already running)
 python3 server.py
 
@@ -64,46 +115,6 @@ python3 normal_traffic.py --duration 60 --ip 10.0.0.50
 # terminal 4 — attack, whenever you want to trigger a detection live
 python3 attack_traffic.py --mode bruteforce --attempts 20 --delay 0.05
 python3 attack_traffic.py --mode spray --attempts 30 --delay 0.05
-```
 
-Watch terminal 2 — it will print `✅ normal` for the real user and
-`🚨 ATTACK` with reasoning the moment attack traffic starts arriving.
-
-**3. See it as a dashboard (GUI):**
-```bash
 # after step 1, export what the model decided on your generated log
 python3 export_events.py --raw logs/login_attempts.csv --out dashboard_events.json
-```
-Then open `dashboard.html` directly in any browser (double-click it, no
-server needed), click **"Choose events file"**, and select
-`dashboard_events.json`. Hit **Play** — it replays every window the model
-scored, in order, showing:
-- a live status bar (attack/normal counts, event count)
-- a scrolling timeline of attempts-per-window, red bars = flagged attacks
-- a threat-alert feed you can click into
-- a detection-details panel with the model's confidence and exact reasoning per event
-
-No file handy? Click **"Load sample data"** on the dashboard for a small
-built-in demo — useful for showing the GUI works even without running the
-Python pipeline first.
-
-You can also point `export_events.py` at a different `--raw` log (e.g. a
-fresh capture from another live run) to see the dashboard replay a
-different scenario — that's the "choose which file to run" step.
-
-## Honest limitations (say these out loud in your pitch — it builds credibility)
-
-- Small-scale simulation, not internet-scale traffic
-- Simplified login protocol, not real IMAP/SMTP
-- Only two attack types modeled (brute force, credential spray) — real
-  attackers have more variations
-- Window-based detection has some inherent lag (up to the window size)
-  before enough attempts accumulate to classify confidently
-
-## Suggested pitch structure
-
-1. Problem: most IDS models assume bidirectional visibility; real deployments (diodes, DDoS capture points) often don't have it
-2. What we found in our own first model: it silently relied on response-direction (`Bwd_*`) features — show the old `feature_importance.csv` as evidence you understand your own system
-3. Rebuild: self-generated traffic, inbound-only features, honest accuracy
-4. **Live demo** — this is the centerpiece, run it live, don't show slides of it
-5. Limitations slide, said plainly
