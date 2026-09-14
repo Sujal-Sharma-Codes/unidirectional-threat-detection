@@ -34,25 +34,26 @@ def send_attempt(ip, username, password, label="NORMAL", sim_ts=None, real_delay
         raise
 
 
-def run(duration_seconds: int, source_ip: str, compressed: bool = False, sim_span_seconds: int = None):
+def run(duration_seconds: int, source_ip: str, compressed: bool = False, sim_span_seconds: int = None, demo: bool = False):
     """
-    compressed=False : real-time mode for the LIVE demo. Actually sleeps
-        5-120s between logins, exactly like a real user would.
-    compressed=True  : dataset-generation mode. Simulates `sim_span_seconds`
-        worth of realistic user behaviour (e.g. a full day) but sends all
-        requests back-to-back with a simulated timestamp, so it finishes in
-        real seconds instead of real hours. Used only to build training data.
+    compressed=False, demo=False : real-time mode, realistic pacing (5-120s
+        gaps) - what a genuine user looks like.
+    demo=True   : real-time mode but faster pacing (2-8s gaps), so a GUI/
+        live demo doesn't sit idle for a minute waiting for the next login.
+    compressed=True : dataset-generation mode (see below).
     """
     username, password = random.choice(REAL_USERS)
 
     if not compressed:
-        print(f"[normal_traffic] LIVE mode: simulating a normal user for {duration_seconds}s from {source_ip}")
+        gap_range = (2, 8) if demo else (5, 120)
+        mode_name = "DEMO" if demo else "LIVE"
+        print(f"[normal_traffic] {mode_name} mode: simulating a normal user for {duration_seconds}s from {source_ip}")
         end_time = time.time() + duration_seconds
         while time.time() < end_time:
             pwd = password if random.random() > 0.05 else password + "x"
             resp = send_attempt(source_ip, username, pwd, label="NORMAL")
             print(f"[normal_traffic] login attempt -> {resp}")
-            time.sleep(random.uniform(5, 120))
+            time.sleep(random.uniform(*gap_range))
     else:
         span = sim_span_seconds or duration_seconds
         print(f"[normal_traffic] COMPRESSED mode: generating {span}s of simulated normal activity from {source_ip}")
@@ -70,5 +71,6 @@ if __name__ == "__main__":
     parser.add_argument("--ip", type=str, default="10.0.0.15", help="simulated source ip")
     parser.add_argument("--compressed", action="store_true", help="dataset-generation mode")
     parser.add_argument("--sim-span", type=int, default=3600, help="simulated seconds of activity (compressed mode)")
+    parser.add_argument("--demo", action="store_true", help="faster pacing for live GUI demos")
     args = parser.parse_args()
-    run(args.duration, args.ip, compressed=args.compressed, sim_span_seconds=args.sim_span)
+    run(args.duration, args.ip, compressed=args.compressed, sim_span_seconds=args.sim_span, demo=args.demo)

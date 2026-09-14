@@ -32,7 +32,9 @@ the login succeeded, never using response-side traffic.
 - `generate_dataset.py` — orchestrates many rounds of both to build a labeled dataset
 - `feature_extractor.py` — turns raw attempts into windowed behavioral features
 - `train_model.py` — trains the Random Forest, saves model + honest metrics
-- `live_monitor.py` — **the demo**: watches attempts arrive live, flags NORMAL/ATTACK in real time with plain-English reasons
+- `live_monitor.py` — terminal demo: watches attempts arrive live, flags NORMAL/ATTACK in real time with plain-English reasons
+- `export_events.py` — runs the trained model over any traffic log and exports a JSON events file for the dashboard
+- `dashboard.html` — **the GUI**: open it in any browser, load an events file, and watch the detection timeline, alert feed, and reasoning replay live
 - `model_results.json` / `feature_importance.csv` — latest training run's metrics
 
 ## How to run
@@ -66,6 +68,28 @@ python3 attack_traffic.py --mode spray --attempts 30 --delay 0.05
 
 Watch terminal 2 — it will print `✅ normal` for the real user and
 `🚨 ATTACK` with reasoning the moment attack traffic starts arriving.
+
+**3. See it as a dashboard (GUI):**
+```bash
+# after step 1, export what the model decided on your generated log
+python3 export_events.py --raw logs/login_attempts.csv --out dashboard_events.json
+```
+Then open `dashboard.html` directly in any browser (double-click it, no
+server needed), click **"Choose events file"**, and select
+`dashboard_events.json`. Hit **Play** — it replays every window the model
+scored, in order, showing:
+- a live status bar (attack/normal counts, event count)
+- a scrolling timeline of attempts-per-window, red bars = flagged attacks
+- a threat-alert feed you can click into
+- a detection-details panel with the model's confidence and exact reasoning per event
+
+No file handy? Click **"Load sample data"** on the dashboard for a small
+built-in demo — useful for showing the GUI works even without running the
+Python pipeline first.
+
+You can also point `export_events.py` at a different `--raw` log (e.g. a
+fresh capture from another live run) to see the dashboard replay a
+different scenario — that's the "choose which file to run" step.
 
 ## Honest limitations (say these out loud in your pitch — it builds credibility)
 
