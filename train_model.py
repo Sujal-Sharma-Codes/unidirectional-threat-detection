@@ -1,5 +1,6 @@
 """
 train_model.py
+
 Trains a Random Forest on the windowed, unidirectional-safe features.
 
 Compare this file's honesty with the original: we report accuracy that will
@@ -9,6 +10,7 @@ inflating the old score, and the dataset is much smaller and self-generated.
 We report this drop explicitly rather than hiding it, because that's the
 actual point being demonstrated.
 """
+
 import pandas as pd
 import numpy as np
 import json
@@ -42,7 +44,7 @@ def main():
     clf = RandomForestClassifier(
         n_estimators=150,
         max_depth=12,
-        class_weight="balanced",   # dataset is imbalanced (attacks are rarer)
+        class_weight="balanced",  # dataset is imbalanced (attacks are rarer)
         random_state=42,
         n_jobs=-1,
     )

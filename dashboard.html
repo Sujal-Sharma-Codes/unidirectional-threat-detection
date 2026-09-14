@@ -3,362 +3,110 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Unidirectional Threat Detection — Live Dashboard</title>
-<style>
-  :root{
-    --bg:#0F1620; --panel:#161F2C; --panel-2:#131B26; --line:#26313F;
-    --text:#E7ECF2; --muted:#8A97A8; --dim:#5B6675;
-    --red:#D64545; --red-dim:#3A2224; --green:#3FB68B; --green-dim:#173028;
-    --amber:#E0A22B; --mono:ui-monospace,"SF Mono","Cascadia Code","Roboto Mono",monospace;
-    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif;
-  }
-  *{box-sizing:border-box;}
-  body{
-    margin:0; background:var(--bg); color:var(--text); font-family:var(--sans);
-    min-height:100vh; padding:16px;
-  }
-  .wrap{max-width:1000px; margin:0 auto;}
-
-  header{
-    display:flex; align-items:center; justify-content:space-between;
-    padding:14px 18px; background:var(--panel); border:1px solid var(--line);
-    border-radius:6px; margin-bottom:12px; flex-wrap:wrap; gap:10px;
-  }
-  header h1{font-size:15px; margin:0; letter-spacing:.02em; font-weight:600;}
-  header h1 span{color:var(--muted); font-weight:400;}
-  .live-pill{
-    display:flex; align-items:center; gap:6px; font-family:var(--mono);
-    font-size:12px; color:var(--dim); padding:4px 10px; border:1px solid var(--line);
-    border-radius:20px;
-  }
-  .live-pill.on{color:var(--green); border-color:var(--green-dim);}
-  .dot{width:7px; height:7px; border-radius:50%; background:var(--dim);}
-  .live-pill.on .dot{background:var(--green); box-shadow:0 0 6px var(--green);}
-
-  .controls{
-    display:flex; gap:8px; flex-wrap:wrap; align-items:center;
-    background:var(--panel); border:1px solid var(--line); border-radius:6px;
-    padding:12px 14px; margin-bottom:12px; font-size:13px;
-  }
-  .controls label.filebtn{
-    background:var(--panel-2); border:1px solid var(--line); color:var(--text);
-    padding:7px 12px; border-radius:5px; cursor:pointer; font-size:13px;
-  }
-  .controls input[type=file]{display:none;}
-  button{
-    background:var(--panel-2); border:1px solid var(--line); color:var(--text);
-    padding:7px 12px; border-radius:5px; cursor:pointer; font-size:13px; font-family:var(--sans);
-  }
-  button:hover{border-color:#3a4756;}
-  button:disabled{opacity:.4; cursor:not-allowed;}
-  button.primary{background:#1C2A3A; border-color:#2C4059; color:#8FC3FF;}
-  select{
-    background:var(--panel-2); border:1px solid var(--line); color:var(--text);
-    padding:7px 10px; border-radius:5px; font-size:13px; font-family:var(--sans);
-  }
-  .filename{color:var(--muted); font-size:12px; font-family:var(--mono);}
-
-  .stats{
-    display:grid; grid-template-columns:repeat(4,1fr); gap:1px;
-    background:var(--line); border:1px solid var(--line); border-radius:6px;
-    overflow:hidden; margin-bottom:12px;
-  }
-  .stat{background:var(--panel); padding:14px; text-align:left;}
-  .stat .label{font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin-bottom:6px;}
-  .stat .value{font-family:var(--mono); font-size:24px; font-weight:600;}
-  .stat.status .value{font-size:15px; display:flex; align-items:center; gap:6px;}
-  .stat.attacks .value{color:var(--red);}
-  .stat.normal .value{color:var(--green);}
-
-  .panel-title{
-    font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em;
-    padding:10px 14px; border-bottom:1px solid var(--line);
-  }
-  .timeline-panel{
-    background:var(--panel); border:1px solid var(--line); border-radius:6px;
-    margin-bottom:12px; overflow:hidden;
-  }
-  #timeline{display:block; width:100%; height:120px;}
-
-  .lower{display:grid; grid-template-columns:1.3fr 1fr; gap:12px;}
-  @media (max-width:680px){ .lower{grid-template-columns:1fr;} .stats{grid-template-columns:repeat(2,1fr);} }
-
-  .card{background:var(--panel); border:1px solid var(--line); border-radius:6px; overflow:hidden;}
-  .feed{max-height:360px; overflow-y:auto;}
-  .alert-row{
-    display:flex; align-items:center; gap:10px; padding:10px 14px;
-    border-bottom:1px solid var(--line); font-size:13px;
-  }
-  .alert-row:last-child{border-bottom:none;}
-  .badge{
-    font-family:var(--mono); font-size:11px; font-weight:600; padding:2px 7px;
-    border-radius:4px; white-space:nowrap;
-  }
-  .badge.attack{background:var(--red-dim); color:var(--red);}
-  .badge.normal{background:var(--green-dim); color:var(--green);}
-  .alert-ip{font-family:var(--mono); color:var(--text);}
-  .alert-meta{color:var(--dim); font-size:12px; margin-left:auto; white-space:nowrap;}
-  .empty{padding:30px 14px; text-align:center; color:var(--dim); font-size:13px;}
-
-  .detail{padding:14px;}
-  .detail .row{display:flex; justify-content:space-between; padding:7px 0; border-bottom:1px solid var(--line); font-size:13px;}
-  .detail .row:last-of-type{border-bottom:none;}
-  .detail .row .k{color:var(--muted);}
-  .detail .row .v{font-family:var(--mono); font-weight:600;}
-  .risk-HIGH{color:var(--red);} .risk-MEDIUM{color:var(--amber);} .risk-LOW{color:var(--muted);} .risk-NONE{color:var(--green);}
-  .evidence{margin-top:10px; font-size:12.5px; color:var(--muted); line-height:1.5;}
-  .evidence div{padding-left:12px; position:relative; margin-bottom:4px;}
-  .evidence div:before{content:"–"; position:absolute; left:0; color:var(--dim);}
-
-  footer{text-align:center; color:var(--dim); font-size:11.5px; margin-top:14px; font-family:var(--mono);}
-</style>
+<title>Threat Detection Console</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
 </head>
 <body>
-<div class="wrap">
 
-  <header>
-    <h1>UNIDIRECTIONAL THREAT DETECTION <span>· login activity monitor</span></h1>
-    <div class="live-pill" id="livePill"><span class="dot"></span><span id="liveText">IDLE</span></div>
-  </header>
-
-  <div class="controls">
-    <label class="filebtn">Choose events file<input type="file" id="fileInput" accept=".json"></label>
-    <span class="filename" id="fileName">no file loaded</span>
-    <span style="flex:1"></span>
-    <button id="demoBtn">Load sample data</button>
-    <button id="playBtn" class="primary" disabled>▶ Play</button>
-    <button id="resetBtn" disabled>Reset</button>
-    <select id="speedSelect">
-      <option value="700">Speed: normal</option>
-      <option value="200">Speed: fast</option>
-      <option value="60">Speed: max</option>
-    </select>
-  </div>
-
-  <div class="stats">
-    <div class="stat status">
-      <div class="label">Status</div>
-      <div class="value"><span class="dot" id="statusDot" style="background:var(--dim)"></span><span id="statusText">Monitoring</span></div>
-    </div>
-    <div class="stat attacks"><div class="label">Attacks</div><div class="value" id="attackCount">0</div></div>
-    <div class="stat normal"><div class="label">Normal</div><div class="value" id="normalCount">0</div></div>
-    <div class="stat"><div class="label">Events</div><div class="value" id="eventCount">0</div></div>
-  </div>
-
-  <div class="timeline-panel">
-    <div class="panel-title">Live traffic / detection timeline — attempts per window, red = flagged attack</div>
-    <canvas id="timeline"></canvas>
-  </div>
-
-  <div class="lower">
-    <div class="card">
-      <div class="panel-title">Threat alerts</div>
-      <div class="feed" id="alertFeed"><div class="empty">No file loaded yet. Choose an events.json exported by export_events.py, or load sample data above.</div></div>
-    </div>
-    <div class="card">
-      <div class="panel-title">Detection details</div>
-      <div class="detail" id="detailPanel">
-        <div class="row"><span class="k">Confidence</span><span class="v">—</span></div>
-        <div class="row"><span class="k">Attempts</span><span class="v">—</span></div>
-        <div class="row"><span class="k">Unique users</span><span class="v">—</span></div>
-        <div class="row"><span class="k">Window</span><span class="v">—</span></div>
-        <div class="evidence"><div>Select or await an event to see model reasoning here.</div></div>
-      </div>
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-dot"></span>
+    <div>
+      <h1>Unidirectional Threat Detection</h1>
+      <p class="subtitle">Inbound-only login behavior monitoring &middot; Random Forest classifier</p>
     </div>
   </div>
+  <div class="status-pills" id="status-pills">
+    <div class="pill" id="pill-system"><span class="dot"></span>SYSTEM <b id="pill-system-text">--</b></div>
+    <div class="pill" id="pill-model"><span class="dot"></span>AI MODEL <b id="pill-model-text">--</b></div>
+    <div class="pill" id="pill-monitor"><span class="dot"></span>MONITOR <b id="pill-monitor-text">--</b></div>
+  </div>
+</header>
 
-  <footer>predictions shown here come directly from network_threat_model.pkl via export_events.py — this page only replays them</footer>
+<div id="banner-model-missing" class="banner banner-warn hidden">
+  Model not loaded yet. Train it once with:
+  <code>python3 generate_dataset.py &amp;&amp; python3 feature_extractor.py &amp;&amp; python3 train_model.py</code>
+  then click <b>Start Monitoring</b> again.
 </div>
 
-<script>
-let events = [];
-let idx = 0;
-let playing = false;
-let timer = null;
-let attackN = 0, normalN = 0;
+<main class="layout">
 
-const els = {
-  fileInput: document.getElementById('fileInput'),
-  fileName: document.getElementById('fileName'),
-  demoBtn: document.getElementById('demoBtn'),
-  playBtn: document.getElementById('playBtn'),
-  resetBtn: document.getElementById('resetBtn'),
-  speedSelect: document.getElementById('speedSelect'),
-  livePill: document.getElementById('livePill'),
-  liveText: document.getElementById('liveText'),
-  statusDot: document.getElementById('statusDot'),
-  statusText: document.getElementById('statusText'),
-  attackCount: document.getElementById('attackCount'),
-  normalCount: document.getElementById('normalCount'),
-  eventCount: document.getElementById('eventCount'),
-  alertFeed: document.getElementById('alertFeed'),
-  detailPanel: document.getElementById('detailPanel'),
-  canvas: document.getElementById('timeline'),
-};
-const ctx = els.canvas.getContext('2d');
+  <section class="stats-row">
+    <div class="stat-card">
+      <span class="stat-label">Total Events</span>
+      <span class="stat-value" id="stat-total">0</span>
+    </div>
+    <div class="stat-card stat-normal">
+      <span class="stat-label">Normal</span>
+      <span class="stat-value" id="stat-normal">0</span>
+    </div>
+    <div class="stat-card stat-attack">
+      <span class="stat-label">Attacks</span>
+      <span class="stat-value" id="stat-attack">0</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Threat Level</span>
+      <span class="stat-value" id="stat-threat">LOW</span>
+    </div>
+  </section>
 
-function resizeCanvas(){
-  const rect = els.canvas.getBoundingClientRect();
-  els.canvas.width = rect.width * devicePixelRatio;
-  els.canvas.height = 120 * devicePixelRatio;
-  ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
-  drawTimeline();
-}
-window.addEventListener('resize', resizeCanvas);
+  <section class="controls-row">
+    <button class="btn btn-primary" id="btn-start-monitor">Start Monitoring</button>
+    <button class="btn" id="btn-stop-monitor">Stop Monitoring</button>
+    <span class="divider"></span>
+    <button class="btn" data-action="normal_short">Normal Traffic (45s)</button>
+    <button class="btn" data-action="normal_long">Normal Traffic (120s)</button>
+    <button class="btn btn-danger" data-action="attack_bruteforce">Simulate Brute Force</button>
+    <button class="btn btn-danger" data-action="attack_spray">Simulate Credential Spray</button>
+    <span class="divider"></span>
+    <button class="btn btn-ghost" id="btn-clear">Clear History</button>
+    <span class="control-msg" id="control-msg"></span>
+  </section>
 
-function drawTimeline(){
-  const w = els.canvas.clientWidth, h = 120;
-  ctx.clearRect(0,0,w,h);
-  ctx.strokeStyle = '#1c2733';
-  ctx.beginPath(); ctx.moveTo(0,h-20.5); ctx.lineTo(w,h-20.5); ctx.stroke();
+  <section class="grid-main">
 
-  const shown = events.slice(Math.max(0, idx-60), idx);
-  if(shown.length === 0) return;
-  const maxAttempts = Math.max(5, ...shown.map(e=>e.attempts_in_window));
-  const barW = Math.max(2, w / 60 - 2);
-  shown.forEach((e,i)=>{
-    const x = i * (w/60);
-    const bh = Math.min(h-24, (e.attempts_in_window / maxAttempts) * (h-24));
-    ctx.fillStyle = e.prediction === 'ATTACK' ? '#D64545' : '#3FB68B';
-    ctx.globalAlpha = e.prediction === 'ATTACK' ? 0.9 : 0.45;
-    ctx.fillRect(x, h-20-bh, barW, bh);
-  });
-  ctx.globalAlpha = 1;
-}
+    <div class="panel panel-timeline">
+      <h2>Live Threat Timeline</h2>
+      <canvas id="timeline-canvas" height="120"></canvas>
+      <div class="legend">
+        <span><i class="swatch swatch-normal"></i>Normal</span>
+        <span><i class="swatch swatch-attack"></i>Attack</span>
+      </div>
+    </div>
 
-function resetState(){
-  idx = 0; attackN = 0; normalN = 0; playing = false;
-  clearInterval(timer);
-  els.attackCount.textContent = '0';
-  els.normalCount.textContent = '0';
-  els.eventCount.textContent = '0';
-  els.alertFeed.innerHTML = '<div class="empty">No alerts yet.</div>';
-  els.playBtn.textContent = '▶ Play';
-  setLive(false);
-  drawTimeline();
-  showDetail(null);
-}
+    <div class="panel panel-detail">
+      <h2>Latest Detection</h2>
+      <div id="latest-detection" class="detection-empty">No attacks detected yet.</div>
+    </div>
 
-function setLive(on){
-  els.livePill.className = 'live-pill' + (on ? ' on' : '');
-  els.liveText.textContent = on ? 'LIVE' : 'IDLE';
-}
+  </section>
 
-function showDetail(e){
-  if(!e){
-    els.detailPanel.innerHTML = `
-      <div class="row"><span class="k">Confidence</span><span class="v">—</span></div>
-      <div class="row"><span class="k">Attempts</span><span class="v">—</span></div>
-      <div class="row"><span class="k">Unique users</span><span class="v">—</span></div>
-      <div class="row"><span class="k">Window</span><span class="v">—</span></div>
-      <div class="evidence"><div>Select or await an event to see model reasoning here.</div></div>`;
-    return;
-  }
-  const evList = (e.evidence && e.evidence.length)
-    ? e.evidence.map(x=>`<div>${x}</div>`).join('')
-    : '<div>No individual flags — within normal range.</div>';
-  els.detailPanel.innerHTML = `
-    <div class="row"><span class="k">Source</span><span class="v">${e.source_ip}</span></div>
-    <div class="row"><span class="k">Classification</span><span class="v risk-${e.risk}">${e.prediction}${e.prediction==='ATTACK' ? ' · '+e.attack_type : ''}</span></div>
-    <div class="row"><span class="k">Confidence</span><span class="v">${(e.confidence*100).toFixed(1)}%</span></div>
-    <div class="row"><span class="k">Attempts</span><span class="v">${e.attempts_in_window}</span></div>
-    <div class="row"><span class="k">Unique users</span><span class="v">${e.unique_usernames_in_window}</span></div>
-    <div class="row"><span class="k">Window</span><span class="v">${e.window_seconds}s</span></div>
-    <div class="evidence">${evList}</div>`;
-}
+  <section class="grid-lower">
 
-function addAlertRow(e){
-  if(els.alertFeed.querySelector('.empty')) els.alertFeed.innerHTML = '';
-  const row = document.createElement('div');
-  row.className = 'alert-row';
-  const icon = e.risk === 'HIGH' ? '🚨' : '⚠';
-  row.innerHTML = `
-    <span class="badge attack">${icon} ${e.attack_type}</span>
-    <span class="alert-ip">${e.source_ip}</span>
-    <span class="alert-meta">${e.time_str} · ${(e.confidence*100).toFixed(0)}%</span>`;
-  row.style.cursor = 'pointer';
-  row.addEventListener('click', ()=>showDetail(e));
-  els.alertFeed.prepend(row);
-}
+    <div class="panel panel-stream">
+      <h2>Live Event Stream</h2>
+      <div class="table-wrap">
+        <table id="event-table">
+          <thead>
+            <tr>
+              <th>Time</th><th>Source IP</th><th>Type</th><th>Prediction</th>
+              <th>Confidence</th><th>Severity</th><th>Reason</th>
+            </tr>
+          </thead>
+          <tbody id="event-table-body"></tbody>
+        </table>
+      </div>
+    </div>
 
-function step(){
-  if(idx >= events.length){ playing=false; els.playBtn.textContent='▶ Play'; setLive(false); return; }
-  const e = events[idx];
-  idx++;
-  els.eventCount.textContent = idx;
-  if(e.prediction === 'ATTACK'){
-    attackN++; els.attackCount.textContent = attackN;
-    addAlertRow(e);
-    els.statusText.textContent = 'Attack detected';
-    els.statusDot.style.background = 'var(--red)';
-  } else {
-    normalN++; els.normalCount.textContent = normalN;
-    els.statusText.textContent = 'Monitoring';
-    els.statusDot.style.background = 'var(--green)';
-  }
-  showDetail(e);
-  drawTimeline();
-}
+    <div class="panel panel-features">
+      <h2>Detector Features (selected event)</h2>
+      <div id="feature-list" class="feature-empty">Click a row in the event stream to inspect its features.</div>
+    </div>
 
-function play(){
-  if(events.length === 0) return;
-  playing = true;
-  setLive(true);
-  els.playBtn.textContent = '⏸ Pause';
-  const speed = parseInt(els.speedSelect.value, 10);
-  clearInterval(timer);
-  timer = setInterval(()=>{ if(playing) step(); }, speed);
-}
-function pause(){
-  playing = false;
-  els.playBtn.textContent = '▶ Play';
-  setLive(false);
-  clearInterval(timer);
-}
+  </section>
 
-els.playBtn.addEventListener('click', ()=> playing ? pause() : play());
-els.resetBtn.addEventListener('click', resetState);
-els.speedSelect.addEventListener('change', ()=>{ if(playing){ play(); } });
+</main>
 
-els.fileInput.addEventListener('change', (ev)=>{
-  const file = ev.target.files[0];
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = ()=>{
-    try{
-      const data = JSON.parse(reader.result);
-      loadEvents(data, file.name);
-    }catch(err){
-      els.fileName.textContent = 'invalid JSON file';
-    }
-  };
-  reader.readAsText(file);
-});
-
-function loadEvents(data, label){
-  events = data.slice().sort((a,b)=>a.timestamp-b.timestamp);
-  els.fileName.textContent = `${label} — ${events.length} events`;
-  els.playBtn.disabled = false;
-  els.resetBtn.disabled = false;
-  resetState();
-}
-
-// small embedded sample so the dashboard is provable without running Python first
-const SAMPLE_EVENTS = [
-  {timestamp:0,time_str:"09:00:01",source_ip:"10.0.0.15",prediction:"NORMAL",attack_type:"NORMAL",confidence:0.97,risk:"NONE",attempts_in_window:1,unique_usernames_in_window:1,window_seconds:60,evidence:[]},
-  {timestamp:1,time_str:"09:02:14",source_ip:"10.0.0.22",prediction:"NORMAL",attack_type:"NORMAL",confidence:0.95,risk:"NONE",attempts_in_window:1,unique_usernames_in_window:1,window_seconds:60,evidence:[]},
-  {timestamp:2,time_str:"09:04:40",source_ip:"10.0.0.31",prediction:"NORMAL",attack_type:"NORMAL",confidence:0.96,risk:"NONE",attempts_in_window:1,unique_usernames_in_window:1,window_seconds:60,evidence:[]},
-  {timestamp:3,time_str:"09:06:02",source_ip:"203.0.113.77",prediction:"ATTACK",attack_type:"BRUTE FORCE",confidence:1.0,risk:"HIGH",attempts_in_window:34,unique_usernames_in_window:1,window_seconds:60,evidence:["34 login attempts in a 60s window (normal is ~1)","attempts only 0.02s apart - too fast for a human typing a password"]},
-  {timestamp:4,time_str:"09:06:03",source_ip:"10.0.0.44",prediction:"NORMAL",attack_type:"NORMAL",confidence:0.94,risk:"NONE",attempts_in_window:1,unique_usernames_in_window:1,window_seconds:60,evidence:[]},
-  {timestamp:5,time_str:"09:06:40",source_ip:"198.51.100.10",prediction:"ATTACK",attack_type:"CREDENTIAL SPRAY",confidence:1.0,risk:"HIGH",attempts_in_window:11,unique_usernames_in_window:6,window_seconds:60,evidence:["11 login attempts in a 60s window (normal is ~1)","6 different usernames tried from one source"]},
-  {timestamp:6,time_str:"09:06:41",source_ip:"198.51.100.11",prediction:"ATTACK",attack_type:"CREDENTIAL SPRAY",confidence:0.99,risk:"HIGH",attempts_in_window:8,unique_usernames_in_window:5,window_seconds:60,evidence:["attempts only 0.25s apart - too fast for a human typing a password","5 different usernames tried from one source"]},
-  {timestamp:7,time_str:"09:08:11",source_ip:"10.0.0.58",prediction:"NORMAL",attack_type:"NORMAL",confidence:0.98,risk:"NONE",attempts_in_window:1,unique_usernames_in_window:1,window_seconds:60,evidence:[]},
-  {timestamp:8,time_str:"09:09:30",source_ip:"10.0.0.63",prediction:"NORMAL",attack_type:"NORMAL",confidence:0.93,risk:"NONE",attempts_in_window:1,unique_usernames_in_window:1,window_seconds:60,evidence:[]},
-  {timestamp:9,time_str:"09:11:02",source_ip:"203.0.113.91",prediction:"ATTACK",attack_type:"BRUTE FORCE",confidence:1.0,risk:"HIGH",attempts_in_window:50,unique_usernames_in_window:1,window_seconds:60,evidence:["50 login attempts in a 60s window (normal is ~1)","attempts only 0.02s apart - too fast for a human typing a password"]},
-];
-els.demoBtn.addEventListener('click', ()=> loadEvents(SAMPLE_EVENTS, 'sample_data.json'));
-
-resizeCanvas();
-</script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 </body>
 </html>

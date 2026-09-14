@@ -1,24 +1,26 @@
 """
 feature_extractor.py
+
 Converts raw login_attempts.csv rows into windowed, per-source-IP behavioral
 features suitable for training/inference.
 
 Design choice (this is the important part for the "unidirectional" pitch):
-    We deliberately build every feature from what an INBOUND-ONLY sensor can
-    observe about the request itself - arrival timing, payload size,
-    username pattern, request volume. We do NOT use `success` (whether the
-    login succeeded), even though it's available in our simulation, because
-    a real one-way sensor sitting in front of the server (e.g. a network tap
-    or data-diode feed) would not reliably see the full round trip. This
-    keeps the feature set honest for the unidirectional-visibility scenario,
-    unlike the original CICIDS2017 model which leaned heavily on `Bwd_*`
-    (response-direction) flow statistics.
+We deliberately build every feature from what an INBOUND-ONLY sensor can
+observe about the request itself - arrival timing, payload size,
+username pattern, request volume. We do NOT use `success` (whether the
+login succeeded), even though it's available in our simulation, because
+a real one-way sensor sitting in front of the server (e.g. a network tap
+or data-diode feed) would not reliably see the full round trip. This
+keeps the feature set honest for the unidirectional-visibility scenario,
+unlike the original CICIDS2017 model which leaned heavily on `Bwd_*`
+(response-direction) flow statistics.
 
 Windowing: attempts from the same source_ip are grouped into fixed-size
 tumbling time windows (default 60s). Each window becomes one training row.
 Real attacks show up as bursts (many attempts, tight timing) within a
 window; real users show up as at most one attempt per window.
 """
+
 import pandas as pd
 import numpy as np
 

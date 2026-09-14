@@ -1,11 +1,12 @@
 """
 server.py
+
 A minimal mock mail-login server (mimics an IMAP/SMTP AUTH LOGIN exchange).
 
 Why this exists:
-    Instead of training on a static, years-old dataset (CICIDS2017), we build
-    our own live, labeled dataset from traffic we generate ourselves. This
-    server is the "sensor point" - every incoming login attempt is logged.
+Instead of training on a static, years-old dataset (CICIDS2017), we build
+our own live, labeled dataset from traffic we generate ourselves. This
+server is the "sensor point" - every incoming login attempt is logged.
 
 Protocol (simple line-based, not real IMAP - kept minimal on purpose):
     Client connects and sends:
@@ -19,6 +20,7 @@ Protocol (simple line-based, not real IMAP - kept minimal on purpose):
             generator compress hours/days of realistic timing into seconds
             of actual wall-clock run time; if omitted, real time.time() is
             used, which is what the live demo will do)
+
     Server replies "OK\n" or "FAIL\n" and closes the connection.
 
 Every attempt is appended to logs/login_attempts.csv with:
@@ -32,6 +34,7 @@ constraint, our feature extractor (Step 3) will deliberately drop
 `success` from the feature set and keep only what an inbound-only sensor
 could see: arrival timing, payload size, username patterns.
 """
+
 import socket
 import threading
 import csv

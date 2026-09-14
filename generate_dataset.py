@@ -1,5 +1,6 @@
 """
 generate_dataset.py
+
 Runs many rounds of compressed normal + attack traffic against the mock
 server to build a sizeable, labeled, self-generated dataset - replacing
 CICIDS2017 entirely.
@@ -8,6 +9,7 @@ This is what answers the judges' "not just an existing dataset" feedback:
 every row in logs/login_attempts.csv came from traffic we defined and
 generated ourselves, with realistic (if time-compressed) timing patterns.
 """
+
 import subprocess
 import sys
 import random
@@ -29,15 +31,15 @@ def main():
     random.seed(42)
 
     # --- Normal traffic: several "users", each active over a simulated
-    #     multi-hour window, to build a solid NORMAL baseline. ---
+    # multi-hour window, to build a solid NORMAL baseline. ---
     for ip in NORMAL_IPS:
         span = random.randint(3600, 3 * 3600)  # 1-3 simulated hours per user
         run([PY, "normal_traffic.py", "--compressed", "--ip", ip, "--sim-span", str(span)])
 
     # --- Brute force: many separate short bursts at random times, since a
-    #     real burst finishes in seconds and would otherwise collapse into a
-    #     single time window. Multiple sessions per attacker (re-attempting
-    #     over a longer period) gives the model more varied examples. ---
+    # real burst finishes in seconds and would otherwise collapse into a
+    # single time window. Multiple sessions per attacker (re-attempting
+    # over a longer period) gives the model more varied examples. ---
     for ip in ATTACKER_IPS:
         n_sessions = random.randint(4, 8)
         for _ in range(n_sessions):

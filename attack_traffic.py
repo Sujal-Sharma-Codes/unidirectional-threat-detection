@@ -1,8 +1,8 @@
 """
 attack_traffic.py
-Simulates two common real-world email login attacks:
 
-1. Brute force  - ONE username, MANY passwords tried rapidly, from one IP.
+Simulates two common real-world email login attacks:
+1. Brute force - ONE username, MANY passwords tried rapidly, from one IP.
 2. Credential spray - MANY usernames, 1-2 common passwords, spread across
    several simulated source IPs (mimics a botnet), to dodge simple
    per-account lockouts.
@@ -10,6 +10,7 @@ Simulates two common real-world email login attacks:
 Both run with little/no delay between attempts, which is the key behavioral
 signal our detector will learn (real users don't log in 10x per second).
 """
+
 import socket
 import random
 import time
@@ -35,7 +36,7 @@ def send_attempt(ip, username, password, label, sim_ts=None):
         with socket.create_connection((HOST, PORT), timeout=3) as s:
             s.sendall(msg.encode())
             resp = s.recv(64).decode().strip()
-            return resp
+        return resp
     except ConnectionRefusedError:
         print("[attack_traffic] Server not running. Start server.py first.")
         raise
@@ -89,7 +90,6 @@ if __name__ == "__main__":
 
     if args.mode in ("bruteforce", "both"):
         run_bruteforce(args.attempts, source_ip=args.source_ip, delay=args.delay, compressed=args.compressed)
-
     if args.mode in ("spray", "both"):
         spray_ips = [f"198.51.100.{n}" for n in range(10, 20)]
         run_spray(args.attempts, ip_pool=spray_ips, delay=args.delay, compressed=args.compressed)

@@ -1,9 +1,11 @@
 """
 normal_traffic.py
+
 Simulates a real user checking their mail: occasional logins, human-like
 random delays, mostly correct credentials (people fat-finger passwords
 sometimes too - so we allow a small natural failure rate).
 """
+
 import socket
 import random
 import time
@@ -26,9 +28,9 @@ def send_attempt(ip, username, password, label="NORMAL", sim_ts=None, real_delay
         with socket.create_connection((HOST, PORT), timeout=3) as s:
             s.sendall(msg.encode())
             resp = s.recv(64).decode().strip()
-            if real_delay:
-                time.sleep(real_delay)
-            return resp
+        if real_delay:
+            time.sleep(real_delay)
+        return resp
     except ConnectionRefusedError:
         print("[normal_traffic] Server not running. Start server.py first.")
         raise
@@ -38,7 +40,7 @@ def run(duration_seconds: int, source_ip: str, compressed: bool = False, sim_spa
     """
     compressed=False, demo=False : real-time mode, realistic pacing (5-120s
         gaps) - what a genuine user looks like.
-    demo=True   : real-time mode but faster pacing (2-8s gaps), so a GUI/
+    demo=True  : real-time mode but faster pacing (2-8s gaps), so a GUI/
         live demo doesn't sit idle for a minute waiting for the next login.
     compressed=True : dataset-generation mode (see below).
     """
